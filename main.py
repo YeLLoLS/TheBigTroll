@@ -18,6 +18,7 @@ client = discord.Client()
 @client.event
 async def on_ready():
     print(f"{client.user} logged in now!")
+    await client.change_presence(activity=discord.Game(name="barbut. Răspund doar celor care aruncă cu $112!"))
 
 
 @client.event
