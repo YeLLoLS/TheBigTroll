@@ -74,7 +74,7 @@ async def on_message(message):
         # might be trying to update this at the same time. Not sure though.
 
         if len(author_msg_times[author_id]) > max_msg_per_window:
-            await message.channel.purge(after=datetime.now() - timedelta(seconds=7), check = lambda x: x.author.id == message.author.id, oldest_first=False) #purges the channel
+            await message.channel.purge(after=datetime.now() - timedelta(seconds=7), check = lambda x: x.author == message.author, oldest_first=False) #purges the channel
             muted_role = discord.utils.get(message.guild.roles, name='STFU')
             await message.author.add_roles(muted_role)
             await message.channel.send('Taci, be-me-ai bota!')
@@ -143,11 +143,14 @@ async def alin_ghiceste(ctx):
         await ctx.send(f'Boss-ule, te aștept pe plantație. Răspunsul era {answer}, doar ca să mori de ciudă.')
 
 @bot.command()
-async def create_role(ctx, nume: str, permisie: int):
-    if ctx.message.author == 'YeLLo#6227':
+async def create_role(ctx, nume: str):
+    if str(ctx.message.author) == 'YeLLo#6227':
         guild = ctx.guild
-        permissions = discord.Permissions(permissions = permisie)
+        permissions = discord.Permissions(permissions = 0)
         await guild.create_role(name=nume, colour=discord.Colour(0xFFC0CB), permissions=permissions)
+        await ctx.send("Rol creat cu success!")
+    else:
+        await ctx.send('Nu ai access la aceasta comanda!')
 
 @bot.command()
 async def level(ctx, member: discord.Member = None):
