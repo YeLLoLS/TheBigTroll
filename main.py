@@ -6,6 +6,7 @@ from discord.ext import commands
 from functions import update_data, add_experience, level_up
 import random
 import asyncio
+from datetime import datetime, timedelta
 
 phrases = []
 with open("ganduri.csv") as csv_file:
@@ -14,9 +15,13 @@ with open("ganduri.csv") as csv_file:
         phrases.append(row[1])
 
 
-cuvinte_restrictionate = ['tigan', 'țigan', 'cigan', 'nigg', 'tzigan', 'țzigan', 'nig', 'n1g', 'fut', 'muie', 'muje', 'mu13', 'mui3', 'mu1e']
+cuvinte_restrictionate = ['c1gan','cig4n''c1g4n','țig4n','ț1g4n','t1g4n','tig4n', 'țig4n', 'cig4n','t1gan','tigan', 'țigan', 'cigan', 'nigg', 'tzigan', 'țzigan', 'nig', 'n1g', 'fut', 'muie', 'muje', 'mu13', 'mui3', 'mu1e']
 
 bot = commands.Bot(command_prefix='$')
+
+time_window_milliseconds = 5000
+max_msg_per_window = 5
+author_msg_times = {}
 
 @bot.event
 async def on_ready():
@@ -35,16 +40,57 @@ async def on_member_join(member):
 
 @bot.event
 async def on_message(message):
+
     if message.author.bot == False:
+      
+        if any(x in message.content for x in cuvinte_restrictionate):
+            await message.delete()
+        global author_msg_counts
+
+        author_id = message.author.id
+        # Get current epoch time in milliseconds
+        curr_time = datetime.now().timestamp() * 1000
+
+        # Make empty list for author id, if it does not exist
+        if not author_msg_times.get(author_id, False):
+            author_msg_times[author_id] = []
+
+        # Append the time of this message to the users list of message times
+        author_msg_times[author_id].append(curr_time)
+
+        # Find the beginning of our time window.
+        expr_time = curr_time - time_window_milliseconds
+
+        # Find message times which occurred before the start of our window
+        expired_msgs = [
+            msg_time for msg_time in author_msg_times[author_id]
+            if msg_time < expr_time
+        ]
+
+        # Remove all the expired messages times from our list
+        for msg_time in expired_msgs:
+            author_msg_times[author_id].remove(msg_time)
+        # ^ note: we probably need to use a mutex here. Multiple threads
+        # might be trying to update this at the same time. Not sure though.
+
+        if len(author_msg_times[author_id]) > max_msg_per_window:
+            await message.channel.purge(after=datetime.now() - timedelta(seconds=7), check = lambda x: x.author.id == message.author.id, oldest_first=False) #purges the channel
+            muted_role = discord.utils.get(message.guild.roles, name='STFU')
+            await message.author.add_roles(muted_role)
+            await message.channel.send('Taci, be-me-ai bota!')
+            await asyncio.sleep(10)
+            await message.author.remove_roles(muted_role)
+            await message.channel.send('Acum că te-ai săturat, sper că nu mai cerșești de mâncare.')
         with open('users.json', 'r') as f:
             users = json.load(f)
 
-        await update_data(users, message.author)
-        await add_experience(users, message.author, 5)
-        await level_up(users, message.author, message)
+            await update_data(users, message.author)
+            await add_experience(users, message.author, 5)
+            await level_up(users, message.author, message)
 
         with open('users.json', 'w') as f:
             json.dump(users, f)
+
         await bot.process_commands(message)
     else:
       return
@@ -95,6 +141,13 @@ async def alin_ghiceste(ctx):
             json.dump(users, f)
     else:
         await ctx.send(f'Boss-ule, te aștept pe plantație. Răspunsul era {answer}, doar ca să mori de ciudă.')
+
+@bot.command()
+async def create_role(ctx, nume: str, permisie: int):
+    if ctx.message.author == 'YeLLo#6227':
+        guild = ctx.guild
+        permissions = discord.Permissions(permissions = permisie)
+        await guild.create_role(name=nume, colour=discord.Colour(0xFFC0CB), permissions=permissions)
 
 @bot.command()
 async def level(ctx, member: discord.Member = None):
